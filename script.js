@@ -6,6 +6,7 @@ const livesElement = document.getElementById("lives");
 const levelElement = document.getElementById("level");
 const overlayElement = document.getElementById("overlay");
 const messageElement = document.getElementById("message");
+const powerStatusElement = document.getElementById("powerStatus");
 
 const config = {
   paddle: {
@@ -16,6 +17,13 @@ const config = {
   ball: {
     radius: 9,
     speed: 5.5,
+  },
+  powerups: {
+    size: 28,
+    speed: 2.7,
+    dropChance: 0.22,
+    widePaddleDuration: 12000,
+    widePaddleBonus: 64,
   },
   bricks: {
     rows: 6,
@@ -37,6 +45,19 @@ const brickPalette = [
   "#ff9f1c",
 ];
 
+const powerupTypes = {
+  tripleBall: {
+    label: "3x",
+    color: "#51d0de",
+    message: "Triple ball collected.",
+  },
+  widePaddle: {
+    label: "Wide",
+    color: "#7bd389",
+    message: "Paddle widened.",
+  },
+};
+
 const state = {
   running: false,
   level: 1,
@@ -49,18 +70,35 @@ const state = {
   paddle: {
     x: (canvas.width - config.paddle.width) / 2,
     y: canvas.height - 42,
+    baseWidth: config.paddle.width,
     width: config.paddle.width,
     height: config.paddle.height,
   },
-  ball: {
-    x: canvas.width / 2,
-    y: canvas.height - 56,
-    dx: config.ball.speed,
-    dy: -config.ball.speed,
-    radius: config.ball.radius,
+  balls: [
+    {
+      x: canvas.width / 2,
+      y: canvas.height - 56,
+      dx: config.ball.speed,
+      dy: -config.ball.speed,
+      radius: config.ball.radius,
+    },
+  ],
+  powerups: [],
+  effects: {
+    widePaddleUntil: 0,
   },
   bricks: [],
 };
+
+function createBall(x, y, dx, dy) {
+  return {
+    x,
+    y,
+    dx,
+    dy,
+    radius: config.ball.radius,
+  };
+}
 
 function buildBricks() {
   state.bricks = [];
@@ -81,16 +119,26 @@ function buildBricks() {
         height: config.bricks.height,
         hitsLeft: 1,
         color: brickPalette[(row + col) % brickPalette.length],
+        powerupType:
+          Math.random() < config.powerups.dropChance
+            ? Math.random() > 0.5
+              ? "tripleBall"
+              : "widePaddle"
+            : null,
       });
     }
   }
 }
 
-function resetBall(stickToPaddle = true) {
-  state.ball.x = state.paddle.x + state.paddle.width / 2;
-  state.ball.y = state.paddle.y - state.ball.radius - 2;
-  state.ball.dx = config.ball.speed * (Math.random() > 0.5 ? 1 : -1);
-  state.ball.dy = -config.ball.speed;
+function resetBalls(stickToPaddle = true) {
+  state.balls = [
+    createBall(
+      state.paddle.x + state.paddle.width / 2,
+      state.paddle.y - config.ball.radius - 2,
+      config.ball.speed * (Math.random() > 0.5 ? 1 : -1),
+      -config.ball.speed,
+    ),
+  ];
 
   if (stickToPaddle) {
     state.running = false;
@@ -98,14 +146,96 @@ function resetBall(stickToPaddle = true) {
   }
 }
 
+function syncParkedBall() {
+  const parkedBall = state.balls[0];
+
+  if (!parkedBall) {
+    return;
+  }
+
+  parkedBall.x = state.paddle.x + state.paddle.width / 2;
+  parkedBall.y = state.paddle.y - parkedBall.radius - 2;
+}
+
+function updatePowerStatus(message = "") {
+  const remainingWidePaddleMs = Math.max(
+    0,
+    state.effects.widePaddleUntil - performance.now(),
+  );
+
+  if (remainingWidePaddleMs > 0) {
+    powerStatusElement.textContent = `${message ? `${message} ` : ""}Wide paddle active for ${Math.ceil(remainingWidePaddleMs / 1000)}s.`;
+    return;
+  }
+
+  powerStatusElement.textContent =
+    message || "Break glowing bricks to drop collectible power-ups.";
+}
+
+function refreshPaddleWidth() {
+  const widePaddleActive = performance.now() < state.effects.widePaddleUntil;
+  state.paddle.width =
+    state.paddle.baseWidth +
+    (widePaddleActive ? config.powerups.widePaddleBonus : 0);
+  clampPaddle();
+}
+
+function spawnPowerup(brick) {
+  if (!brick.powerupType) {
+    return;
+  }
+
+  state.powerups.push({
+    type: brick.powerupType,
+    x: brick.x + brick.width / 2,
+    y: brick.y + brick.height / 2,
+    size: config.powerups.size,
+    speed: config.powerups.speed,
+  });
+}
+
+function applyTripleBall(sourceBall) {
+  const baseSpeed =
+    Math.hypot(sourceBall.dx, sourceBall.dy) || config.ball.speed;
+  const directionY = sourceBall.dy <= 0 ? -1 : 1;
+  const newVelocities = [-0.85, 0, 0.85].map((offset) => ({
+    dx: baseSpeed * offset,
+    dy:
+      -Math.sqrt(Math.max(baseSpeed ** 2 - (baseSpeed * offset) ** 2, 1)) *
+      directionY,
+  }));
+
+  state.balls = newVelocities.map((velocity) =>
+    createBall(sourceBall.x, sourceBall.y, velocity.dx, velocity.dy),
+  );
+}
+
+function applyPowerup(powerup) {
+  if (powerup.type === "tripleBall") {
+    applyTripleBall(state.balls[0]);
+  }
+
+  if (powerup.type === "widePaddle") {
+    state.effects.widePaddleUntil =
+      performance.now() + config.powerups.widePaddleDuration;
+    refreshPaddleWidth();
+  }
+
+  updatePowerStatus(powerupTypes[powerup.type].message);
+}
+
 function resetLevel() {
-  state.paddle.width = Math.max(
+  state.paddle.baseWidth = Math.max(
     84,
     config.paddle.width - (state.level - 1) * 10,
   );
+  state.effects.widePaddleUntil = 0;
+  refreshPaddleWidth();
   state.paddle.x = (canvas.width - state.paddle.width) / 2;
+  state.powerups = [];
   buildBricks();
-  resetBall(true);
+  resetBalls(true);
+  updatePowerStatus();
   updateHud();
 }
 
@@ -165,63 +295,60 @@ function movePaddle() {
   clampPaddle();
 
   if (!state.running) {
-    resetBall(false);
+    syncParkedBall();
   }
 }
 
-function collideWithWalls() {
-  const nextX = state.ball.x + state.ball.dx;
-  const nextY = state.ball.y + state.ball.dy;
+function collideWithWalls(ball) {
+  const nextX = ball.x + ball.dx;
+  const nextY = ball.y + ball.dy;
 
-  if (
-    nextX + state.ball.radius >= canvas.width ||
-    nextX - state.ball.radius <= 0
-  ) {
-    state.ball.dx *= -1;
+  if (nextX + ball.radius >= canvas.width || nextX - ball.radius <= 0) {
+    ball.dx *= -1;
   }
 
-  if (nextY - state.ball.radius <= 0) {
-    state.ball.dy *= -1;
+  if (nextY - ball.radius <= 0) {
+    ball.dy *= -1;
   }
 }
 
-function collideWithPaddle() {
+function collideWithPaddle(ball) {
   const paddleTop = state.paddle.y;
   const paddleBottom = state.paddle.y + state.paddle.height;
   const paddleLeft = state.paddle.x;
   const paddleRight = state.paddle.x + state.paddle.width;
 
-  const ballBottom = state.ball.y + state.ball.radius;
+  const ballBottom = ball.y + ball.radius;
 
   if (
     ballBottom >= paddleTop &&
     ballBottom <= paddleBottom &&
-    state.ball.x >= paddleLeft &&
-    state.ball.x <= paddleRight &&
-    state.ball.dy > 0
+    ball.x >= paddleLeft &&
+    ball.x <= paddleRight &&
+    ball.dy > 0
   ) {
-    const hitPosition = (state.ball.x - paddleLeft) / state.paddle.width;
+    const hitPosition = (ball.x - paddleLeft) / state.paddle.width;
     const angle = (hitPosition - 0.5) * Math.PI * 0.75;
     const speed = config.ball.speed + (state.level - 1) * 0.35;
 
-    state.ball.dx = Math.sin(angle) * speed;
-    state.ball.dy = -Math.cos(angle) * speed;
-    state.ball.y = paddleTop - state.ball.radius - 1;
+    ball.dx = Math.sin(angle) * speed;
+    ball.dy = -Math.cos(angle) * speed;
+    ball.y = paddleTop - ball.radius - 1;
   }
 }
 
-function collideWithBricks() {
+function collideWithBricks(ball) {
   for (const brick of state.bricks) {
     if (brick.hitsLeft === 0) {
       continue;
     }
 
     const withinX =
-      state.ball.x + state.ball.radius >= brick.x &&
-      state.ball.x - state.ball.radius <= brick.x + brick.width;
+      ball.x + ball.radius >= brick.x &&
+      ball.x - ball.radius <= brick.x + brick.width;
     const withinY =
-      state.ball.y + state.ball.radius >= brick.y &&
-      state.ball.y - state.ball.radius <= brick.y + brick.height;
+      ball.y + ball.radius >= brick.y &&
+      ball.y - ball.radius <= brick.y + brick.height;
 
     if (!withinX || !withinY) {
       continue;
@@ -229,43 +356,90 @@ function collideWithBricks() {
 
     brick.hitsLeft = 0;
     state.score += 10;
-    state.ball.dy *= -1;
+    ball.dy *= -1;
+    spawnPowerup(brick);
     updateHud();
 
     if (state.bricks.every((item) => item.hitsLeft === 0)) {
       state.level += 1;
       showOverlay("Level cleared. Press space for the next round.");
       resetLevel();
+      return "levelCleared";
     }
 
-    return;
+    return "brickHit";
   }
+
+  return "none";
 }
 
-function updateBall() {
+function updatePowerups() {
+  const nextPowerups = [];
+
+  for (const powerup of state.powerups) {
+    powerup.y += powerup.speed;
+
+    const intersectsPaddle =
+      powerup.y + powerup.size / 2 >= state.paddle.y &&
+      powerup.x >= state.paddle.x &&
+      powerup.x <= state.paddle.x + state.paddle.width &&
+      powerup.y - powerup.size / 2 <= state.paddle.y + state.paddle.height;
+
+    if (intersectsPaddle) {
+      applyPowerup(powerup);
+      continue;
+    }
+
+    if (powerup.y - powerup.size / 2 <= canvas.height) {
+      nextPowerups.push(powerup);
+    }
+  }
+
+  state.powerups = nextPowerups;
+}
+
+function updateBalls() {
   if (!state.running) {
     return;
   }
 
-  collideWithWalls();
-  collideWithPaddle();
-  collideWithBricks();
+  const activeBalls = [];
 
-  state.ball.x += state.ball.dx;
-  state.ball.y += state.ball.dy;
+  for (const ball of state.balls) {
+    collideWithWalls(ball);
+    collideWithPaddle(ball);
+    const collisionResult = collideWithBricks(ball);
 
-  if (state.ball.y - state.ball.radius > canvas.height) {
-    state.lives -= 1;
-    updateHud();
-
-    if (state.lives <= 0) {
-      state.running = false;
-      showOverlay("Game over. Press space to restart.");
+    if (collisionResult === "levelCleared") {
       return;
     }
 
-    resetBall(true);
+    ball.x += ball.dx;
+    ball.y += ball.dy;
+
+    if (ball.y - ball.radius <= canvas.height) {
+      activeBalls.push(ball);
+    }
   }
+
+  state.balls = activeBalls;
+
+  if (state.balls.length > 0) {
+    return;
+  }
+
+  state.lives -= 1;
+  updateHud();
+
+  if (state.lives <= 0) {
+    state.running = false;
+    showOverlay("Game over. Press space to restart.");
+    updatePowerStatus("All balls lost.");
+    return;
+  }
+
+  resetBalls(true);
+  updatePowerStatus("Ball lost.");
 }
 
 function drawBackground() {
@@ -292,11 +466,13 @@ function drawPaddle() {
   ctx.fill();
 }
 
-function drawBall() {
-  ctx.fillStyle = "#ffbf69";
-  ctx.beginPath();
-  ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
-  ctx.fill();
+function drawBalls() {
+  for (const ball of state.balls) {
+    ctx.fillStyle = "#ffbf69";
+    ctx.beginPath();
+    ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 function drawBricks() {
@@ -309,17 +485,54 @@ function drawBricks() {
     ctx.beginPath();
     ctx.roundRect(brick.x, brick.y, brick.width, brick.height, 8);
     ctx.fill();
+
+    if (brick.powerupType) {
+      ctx.strokeStyle = "rgba(255, 252, 246, 0.88)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+      ctx.fillRect(brick.x + 6, brick.y + 5, brick.width - 12, 4);
+    }
+  }
+}
+
+function drawPowerups() {
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = '700 12px "Space Grotesk", sans-serif';
+
+  for (const powerup of state.powerups) {
+    const type = powerupTypes[powerup.type];
+
+    ctx.fillStyle = type.color;
+    ctx.beginPath();
+    ctx.roundRect(
+      powerup.x - powerup.size / 2,
+      powerup.y - powerup.size / 2,
+      powerup.size,
+      powerup.size,
+      8,
+    );
+    ctx.fill();
+
+    ctx.fillStyle = "#132238";
+    ctx.fillText(type.label, powerup.x, powerup.y + 1);
   }
 }
 
 function gameLoop() {
+  refreshPaddleWidth();
   movePaddle();
-  updateBall();
+  updateBalls();
+  updatePowerups();
+  updatePowerStatus();
 
   drawBackground();
   drawBricks();
+  drawPowerups();
   drawPaddle();
-  drawBall();
+  drawBalls();
 
   requestAnimationFrame(gameLoop);
 }
@@ -355,7 +568,7 @@ canvas.addEventListener("mousemove", (event) => {
   clampPaddle();
 
   if (!state.running) {
-    resetBall(false);
+    syncParkedBall();
   }
 });
 
@@ -369,7 +582,7 @@ canvas.addEventListener(
     clampPaddle();
 
     if (!state.running) {
-      resetBall(false);
+      syncParkedBall();
     }
 
     event.preventDefault();

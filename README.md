@@ -13,3 +13,8 @@ Open `index.html` in a browser.
 - Mouse: move the paddle horizontally
 
 Clear all bricks before you run out of lives.
+
+## Power-ups
+
+- `3x`: splits the current ball into a three-ball spread
+- `Wide`: temporarily makes the paddle wider

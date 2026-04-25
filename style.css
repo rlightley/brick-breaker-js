@@ -74,6 +74,14 @@ body {
   box-shadow: 0 28px 60px rgba(19, 34, 56, 0.26);
 }
 
+.status-bar {
+  margin: 0 0 14px;
+  padding: 0 4px;
+  min-height: 1.5rem;
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+
 canvas {
   display: block;
   width: 100%;
@@ -133,5 +141,10 @@ canvas {
 
   .stage {
     border-radius: 20px;
+  }
+
+  .status-bar {
+    margin-bottom: 12px;
+    font-size: 0.9rem;
   }
 }
