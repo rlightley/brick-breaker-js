@@ -28,7 +28,14 @@ const config = {
   },
 };
 
-const brickPalette = ["#f0b429", "#ef6f6c", "#51d0de", "#7bd389", "#9b5de5", "#ff9f1c"];
+const brickPalette = [
+  "#f0b429",
+  "#ef6f6c",
+  "#51d0de",
+  "#7bd389",
+  "#9b5de5",
+  "#ff9f1c",
+];
 
 const state = {
   running: false,
@@ -60,8 +67,12 @@ function buildBricks() {
 
   for (let row = 0; row < config.bricks.rows; row += 1) {
     for (let col = 0; col < config.bricks.cols; col += 1) {
-      const x = config.bricks.offsetLeft + col * (config.bricks.width + config.bricks.padding);
-      const y = config.bricks.offsetTop + row * (config.bricks.height + config.bricks.padding);
+      const x =
+        config.bricks.offsetLeft +
+        col * (config.bricks.width + config.bricks.padding);
+      const y =
+        config.bricks.offsetTop +
+        row * (config.bricks.height + config.bricks.padding);
 
       state.bricks.push({
         x,
@@ -88,7 +99,10 @@ function resetBall(stickToPaddle = true) {
 }
 
 function resetLevel() {
-  state.paddle.width = Math.max(84, config.paddle.width - (state.level - 1) * 10);
+  state.paddle.width = Math.max(
+    84,
+    config.paddle.width - (state.level - 1) * 10,
+  );
   state.paddle.x = (canvas.width - state.paddle.width) / 2;
   buildBricks();
   resetBall(true);
@@ -159,7 +173,10 @@ function collideWithWalls() {
   const nextX = state.ball.x + state.ball.dx;
   const nextY = state.ball.y + state.ball.dy;
 
-  if (nextX + state.ball.radius >= canvas.width || nextX - state.ball.radius <= 0) {
+  if (
+    nextX + state.ball.radius >= canvas.width ||
+    nextX - state.ball.radius <= 0
+  ) {
     state.ball.dx *= -1;
   }
 
@@ -199,8 +216,12 @@ function collideWithBricks() {
       continue;
     }
 
-    const withinX = state.ball.x + state.ball.radius >= brick.x && state.ball.x - state.ball.radius <= brick.x + brick.width;
-    const withinY = state.ball.y + state.ball.radius >= brick.y && state.ball.y - state.ball.radius <= brick.y + brick.height;
+    const withinX =
+      state.ball.x + state.ball.radius >= brick.x &&
+      state.ball.x - state.ball.radius <= brick.x + brick.width;
+    const withinY =
+      state.ball.y + state.ball.radius >= brick.y &&
+      state.ball.y - state.ball.radius <= brick.y + brick.height;
 
     if (!withinX || !withinY) {
       continue;
@@ -261,7 +282,13 @@ function drawBackground() {
 function drawPaddle() {
   ctx.fillStyle = "#f8f5f1";
   ctx.beginPath();
-  ctx.roundRect(state.paddle.x, state.paddle.y, state.paddle.width, state.paddle.height, 10);
+  ctx.roundRect(
+    state.paddle.x,
+    state.paddle.y,
+    state.paddle.width,
+    state.paddle.height,
+    10,
+  );
   ctx.fill();
 }
 
@@ -347,7 +374,7 @@ canvas.addEventListener(
 
     event.preventDefault();
   },
-  { passive: false }
+  { passive: false },
 );
 
 canvas.addEventListener("click", () => {
