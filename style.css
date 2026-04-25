@@ -1,0 +1,137 @@
+:root {
+  color-scheme: only light;
+  --bg-top: #f4efe7;
+  --bg-bottom: #c8d7c1;
+  --panel: rgba(255, 252, 246, 0.82);
+  --panel-border: rgba(72, 58, 43, 0.15);
+  --ink: #1f2933;
+  --muted: #52606d;
+  --accent: #d66853;
+  --accent-2: #f0b429;
+  --canvas-top: #132238;
+  --canvas-bottom: #1e3a5f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  font-family: "Space Grotesk", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top, rgba(240, 180, 41, 0.35), transparent 24%),
+    linear-gradient(180deg, var(--bg-top), var(--bg-bottom));
+}
+
+.game-shell {
+  width: min(94vw, 980px);
+  padding: 24px;
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.hud > div {
+  padding: 16px 18px;
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px rgba(31, 41, 51, 0.08);
+}
+
+.label,
+.value {
+  margin: 0;
+}
+
+.label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.value {
+  margin-top: 6px;
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 700;
+}
+
+.stage {
+  position: relative;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 28px 60px rgba(19, 34, 56, 0.26);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: linear-gradient(180deg, var(--canvas-top), var(--canvas-bottom));
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: white;
+  background: linear-gradient(180deg, rgba(9, 18, 31, 0.12), rgba(9, 18, 31, 0.58));
+  transition: opacity 180ms ease;
+}
+
+.overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.overlay h1,
+.overlay p {
+  margin: 0;
+}
+
+.overlay h1 {
+  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  letter-spacing: -0.05em;
+}
+
+.overlay p {
+  max-width: 28rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.84);
+}
+
+@media (max-width: 640px) {
+  .game-shell {
+    width: 100vw;
+    padding: 14px;
+  }
+
+  .hud {
+    gap: 10px;
+  }
+
+  .hud > div {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .stage {
+    border-radius: 20px;
+  }
+}

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brick Breaker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="hud">
+        <div>
+          <p class="label">Score</p>
+          <p class="value" id="score">0</p>
+        </div>
+        <div>
+          <p class="label">Lives</p>
+          <p class="value" id="lives">3</p>
+        </div>
+        <div>
+          <p class="label">Level</p>
+          <p class="value" id="level">1</p>
+        </div>
+      </section>
+
+      <section class="stage">
+        <canvas id="gameCanvas" width="840" height="560" aria-label="Brick Breaker game"></canvas>
+        <div class="overlay" id="overlay">
+          <h1>Brick Breaker</h1>
+          <p id="message">Press space to launch the ball.</p>
+        </div>
+      </section>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+</html>
